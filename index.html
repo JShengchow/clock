@@ -19,6 +19,11 @@
       top: 0;
     }
 
+    .clock-set {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
     .clock-countdown {
       font-size: 180px;
       font-weight: 500;
@@ -29,14 +34,24 @@
     }
 
     .clock-cust {
-      display: inline-flex;
-      margin-left: 100px;
+      /* display: inline-flex; */
       align-items: center;
+    }
+
+    .clock-btn {
+      margin-right: 40px;
     }
 
     .el-input-number {
       width: 120px;
-      margin: 0 12px;
+      margin: 12px;
+    }
+
+    .cust-dialog {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
     }
   </style>
 </head>
@@ -44,18 +59,11 @@
 <body>
 
   <div id="app">
-    <el-button @click="handleSetTime(5405,13, 59, 55 )" :disabled="isCoundown" type="primary">行测时间</el-button>
-    <el-button @click="handleSetTime(7205, 16, 14, 55 )" :disabled="isCoundown" type="primary">申论时间</el-button>
-    <el-button @click="handleReset()" type="primary" plain>重置</el-button>
-    <div class="clock-cust">
-      开始时间
-      <el-input-number v-model.number="custHour" :min='0' :max="24"></el-input-number>
-      <el-input-number v-model.number="custMinute" :min='0' :max="60"></el-input-number>
-      <el-input-number v-model.number="custSecond" :min='0' :max="60"></el-input-number>
-      时长
-      <el-input-number v-model.number="custDuration" :min='0'></el-input-number>
-      秒
-      <el-button @click="handleSetTime(custDuration,custHour, custMinute,custSecond)">指定时间</el-button>
+    <div class="clock-set">
+      <el-button @click="handleSetTime(5405,13, 59, 55 )" :disabled="isCoundown" type="primary">行测时间</el-button>
+      <el-button @click="handleSetTime(7205, 16, 14, 55 )" :disabled="isCoundown" type="primary">申论时间</el-button>
+      <el-button @click="handleReset()" type="primary"  :disabled="!isCoundown" plain>重置</el-button>
+      <el-button :disabled="isCoundown" @click="()=> visible= true">指定时间</el-button>
     </div>
 
     <div class="clock-countdown">
@@ -65,6 +73,27 @@
     <div class="clock-current">
       {{ currentClock.displayTime() }}
     </div>
+    <el-dialog v-model="visible" title="开始时间" center align-center>
+      <div class="cust-dialog">
+        <div>
+          <el-input-number v-model.number="custHour" :min='0' :max="24"></el-input-number>时
+        </div>
+        <div>
+          <el-input-number v-model.number="custMinute" :min='0' :max="60"></el-input-number>分
+        </div>
+        <div>
+          <el-input-number v-model.number="custSecond" :min='0' :max="60"></el-input-number>秒
+        </div>
+        <div>
+          时长
+          <el-input-number  v-model.number="custDuration" :min='0' ></el-input-number>
+          秒
+        </div>
+      </div>
+      <template  #footer>
+        <el-button type="primary" @click="handleSetTime(custDuration,custHour, custMinute,custSecond)">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 
   <script>
@@ -127,6 +156,7 @@
         const isCoundown = ref(false)
         const handleSetTime = (duration, hour, minutes, seconds) => {
           ElMessage.warning('即将开始')
+          visible.value = false
           isCoundown.value = true
           // 启动时钟
           countdown.value = new Clock(duration, hour, minutes, seconds)
@@ -150,6 +180,7 @@
         const custMinute = ref(null)
         const custSecond = ref(null)
         const custDuration = ref(null)
+        const visible = ref(false)
         return {
           currentClock,
           countdown,
@@ -158,6 +189,7 @@
           custMinute,
           custSecond,
           custDuration,
+          visible,
           handleSetTime,
           handleReset,
         }
