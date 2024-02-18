@@ -204,6 +204,11 @@
         <el-button type="primary" @click="handleSetTime(custDuration,custHour, custMinute,custSecond)">确定</el-button>
       </template>
     </el-dialog>
+    <video controls="controls" width="0" height="0" autoplay="autoplay" loop="loop"
+      style="display: none; z-index: -1000">
+      <source src="video/light.mp4" type="video/mp4">
+    </video>
+
   </div>
 
   <script>
@@ -290,6 +295,9 @@
         const countdown = ref(new Clock(5400, 13, 59, 50))
         const isCoundown = ref(false)
         const handleSetTime = (duration, hour, minutes, seconds) => {
+          // 播放视频以保持不息屏 
+          var myVideo = document.getElementsByTagName("video")[0];
+          myVideo.play();
           ElMessage.warning('即将开始')
           visible.value = false
           isCoundown.value = true
