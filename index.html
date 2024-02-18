@@ -15,8 +15,8 @@
   <style>
     .clock-current {
       position: fixed;
-      right: 0;
-      top: 0;
+      right: 10px;
+      bottom: 0;
     }
 
     .clock-set {
@@ -25,9 +25,9 @@
     }
 
     .clock-countdown {
-      font-size: 180px;
+      font-size: 160px;
       font-weight: 500;
-      margin: 100px auto 0;
+      margin: 60px auto 0;
       text-align: center;
       border: 2px solid black;
       border-radius: 20px;
@@ -53,6 +53,95 @@
       justify-content: center;
       align-items: center;
     }
+
+    .clock {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 380px;
+      margin: 20px auto;
+      height: 380px;
+      font-size: 24px;
+      border-radius: 20px;
+      box-shadow: 2px 2px 20px rgba(0, 0, 0, .1);
+      --step: 60s;
+    }
+
+    .clock::before {
+      content: '';
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: repeating-conic-gradient(from -.5deg, #333 0 1deg, transparent 0deg 30deg), repeating-conic-gradient(from -.5deg, #ccc 0 1deg, transparent 0deg 6deg);
+      -webkit-mask: radial-gradient(transparent 145px, red 0);
+    }
+
+    .clock-pane {
+      width: 250px;
+      height: 250px;
+      position: absolute;
+    }
+
+    .num {
+      position: absolute;
+      offset-path: path('M250 125c0 69.036-55.964 125-125 125S0 194.036 0 125 55.964 0 125 0s125 55.964 125 125z');
+      offset-distance: calc(var(--i) * 10% / 1.2 - 25%);
+      offset-rotate: 0deg;
+    }
+
+    .hour {
+      position: absolute;
+      width: 4px;
+      height: 60px;
+      background: #333;
+      transform-origin: center bottom;
+      transform: translateY(-50%) rotate(0);
+      animation: clock calc(var(--step) * 60 * 12) infinite linear;
+      animation-delay: calc(-1 * var(--step) * var(--dh) * 60);
+    }
+
+    .min {
+      position: absolute;
+      width: 4px;
+      height: 90px;
+      background: #333;
+      transform-origin: center bottom;
+      transform: translateY(-50%) rotate(0);
+      animation: clock calc(var(--step) * 60) infinite linear;
+      animation-delay: calc(-1 * var(--step) * var(--dm));
+    }
+
+    .sec {
+      position: absolute;
+      width: 2px;
+      height: 120px;
+      background: red;
+      transform-origin: center bottom;
+      transform: translateY(-50%) rotate(0);
+      animation: clock var(--step) infinite steps(60);
+      animation-delay: calc(-1 * var(--step) * var(--ds) / 60);
+    }
+
+    .sec::after {
+      content: '';
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      left: 50%;
+      bottom: 0;
+      background: #fff;
+      border: 4px solid #333;
+      transform: translate(-50%, 50%);
+    }
+
+    @keyframes clock {
+      to {
+        transform: translateY(-50%) rotate(360deg);
+      }
+    }
   </style>
 </head>
 
@@ -62,17 +151,38 @@
     <div class="clock-set">
       <el-button @click="handleSetTime(5405,13, 59, 55 )" :disabled="isCoundown" type="primary">行测时间</el-button>
       <el-button @click="handleSetTime(7205, 16, 14, 55 )" :disabled="isCoundown" type="primary">申论时间</el-button>
-      <el-button @click="handleReset()" type="primary"  :disabled="!isCoundown" plain>重置</el-button>
-      <el-button :disabled="isCoundown" @click="()=> visible= true">指定时间</el-button>
+      <el-button @click="handleReset()" type="primary" :disabled="!isCoundown" plain>重置</el-button>
+      <el-button :disabled="isCoundown" @click="()=> visible= true">自定义时间</el-button>
     </div>
-
-    <div class="clock-countdown">
-      {{ countdown.displayTime() }}
-    </div>
+    <el-switch v-model="switchClock" active-text="指针时钟" inactive-text="数字时钟">
+    </el-switch>
 
     <div class="clock-current">
       {{ currentClock.displayTime() }}
     </div>
+    <div class="clock-countdown" v-show="!switchClock">
+      {{ countdown.displayTime() }}
+    </div>
+    <div class="clock" id="clock" v-show="switchClock">
+      <div class="clock-pane">
+        <div class="num" style="--i:1">1</div>
+        <div class="num" style="--i:2">2</div>
+        <div class="num" style="--i:3">3</div>
+        <div class="num" style="--i:4">4</div>
+        <div class="num" style="--i:5">5</div>
+        <div class="num" style="--i:6">6</div>
+        <div class="num" style="--i:7">7</div>
+        <div class="num" style="--i:8">8</div>
+        <div class="num" style="--i:9">9</div>
+        <div class="num" style="--i:10">10</div>
+        <div class="num" style="--i:11">11</div>
+        <div class="num" style="--i:12">12</div>
+      </div>
+      <div class="hour"></div>
+      <div class="min"></div>
+      <div class="sec"></div>
+    </div>
+
     <el-dialog v-model="visible" title="开始时间" center align-center>
       <div class="cust-dialog">
         <div>
@@ -86,18 +196,18 @@
         </div>
         <div>
           时长
-          <el-input-number  v-model.number="custDuration" :min='0' ></el-input-number>
+          <el-input-number v-model.number="custDuration" :min='0'></el-input-number>
           秒
         </div>
       </div>
-      <template  #footer>
+      <template #footer>
         <el-button type="primary" @click="handleSetTime(custDuration,custHour, custMinute,custSecond)">确定</el-button>
       </template>
     </el-dialog>
   </div>
 
   <script>
-    const { createApp, ref } = Vue
+    const { createApp, ref, nextTick } = Vue
     const { ElMessage, ElMessageBox } = ElementPlus
     const app = createApp({
       setup() {
@@ -113,8 +223,11 @@
             this.localActualTime = Date.now();
             this.elapsedTime = 0;
             this.timerID = null;
-          }
 
+            this.hourAngle = startHour * 30 + (startMinute * 6 / 12)
+            this.minutesAngle = startMinute * 6 + (startSecond * 6 / 60)
+            this.secondAngle = startSecond * 6
+          }
           start(cb) {
             this.elapsedTime = Date.now() - this.localActualTime;
             this.timerID = setInterval(() => {
@@ -147,7 +260,29 @@
             return value.toString().padStart(2, '0');
           }
         }
+
+        const setClockAngle = (time) => {
+          let d = new Date()
+          if (time) {
+            d = new Date(time)
+          }
+          const clock = document.querySelector('#clock')
+          // 重置动画
+          clock.classList.remove('clock')
+          clock.offsetWidth = clock.offsetWidth
+          const h = d.getHours()
+          const m = d.getMinutes()
+          const s = d.getSeconds()
+          clock.style.setProperty('--ds', s)
+          clock.style.setProperty('--dm', m + s / 60)
+          clock.style.setProperty('--dh', h + m / 60 + s / 3600)
+          clock.classList.add('clock')
+        }
+
         // 当前时间
+        nextTick(() => {
+          setClockAngle()
+        })
         const currentClock = ref(new Clock(86400))
         currentClock.value.start()
         // 指定时间
@@ -160,6 +295,7 @@
           isCoundown.value = true
           // 启动时钟
           countdown.value = new Clock(duration, hour, minutes, seconds)
+          setClockAngle(countdown.value.startTime)
           countdown.value.start(() => {
             ElMessageBox.alert('时间到啦！！！', '时间到', {
               confirmButtonText: '做完啦！！！',
@@ -174,6 +310,7 @@
         const handleReset = () => {
           isCoundown.value = false
           countdown.value.reset()
+          setClockAngle()
         }
 
         const custHour = ref(null)
@@ -181,6 +318,7 @@
         const custSecond = ref(null)
         const custDuration = ref(null)
         const visible = ref(false)
+        const switchClock = ref(true)
         return {
           currentClock,
           countdown,
@@ -190,6 +328,7 @@
           custSecond,
           custDuration,
           visible,
+          switchClock,
           handleSetTime,
           handleReset,
         }
