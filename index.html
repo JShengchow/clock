@@ -154,8 +154,9 @@
   <div id="app">
     <div class="clock-set">
       <el-button @click="handleSetTime(5405,09, 29, 55 )" :disabled="isCoundown" type="primary">事业单位时间</el-button>
-      <el-button @click="handleSetTime(5405,13, 59, 55 )" :disabled="isCoundown" type="primary">行测时间</el-button>
+      <el-button @click="handleSetTime(5405,13, 59, 55 )" :disabled="isCoundown" type="primary">行测时间(广东省考)</el-button>
       <el-button @click="handleSetTime(7205, 16, 14, 55 )" :disabled="isCoundown" type="primary">申论时间</el-button>
+      <el-button @click="handleSetTime(7205, 08, 59, 55 )" :disabled="isCoundown" type="primary">行测时间（国考）</el-button>
       <el-button @click="handleReset()" type="primary" :disabled="!isCoundown" plain>重置</el-button>
       <el-button :disabled="isCoundown" @click="()=> visible= true">自定义时间</el-button>
     </div>
