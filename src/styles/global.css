@@ -1,0 +1,46 @@
+/* 基础样式重置 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f5f5f5;
+}
+
+/* 通用容器样式 */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Element Plus 按钮组样式优化 */
+.el-button {
+  margin: 0 5px;
+}
+
+.el-button-group .el-button {
+  margin: 0;
+}
+
+/* 时钟显示样式 */
+.time-display {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+}
+
+/* 控制面板样式 */
+.controls {
+  margin: 20px 0;
+}
+
+/* 时钟切换开关样式 */
+.clock-switch {
+  margin: 15px 0;
+}
+
+/* 标题样式 */
+h1 {
+  color: #333;
+  text-align: center;
+  margin-bottom: 30px;
+}
