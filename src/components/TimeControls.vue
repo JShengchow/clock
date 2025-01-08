@@ -4,7 +4,7 @@
       v-for="preset in timePresets" 
       :key="preset.name"
       @click="handleSetTime(preset)"
-      :disabled="isCountdown"
+      :disabled="isExamMode"
       type="primary"
     >
       {{ preset.name }}
@@ -13,32 +13,65 @@
     <el-button 
       @click="handleReset" 
       type="primary" 
-      :disabled="!isCountdown" 
+      :disabled="!isExamMode" 
       plain
     >
       重置
     </el-button>
     
     <el-button 
-      :disabled="isCountdown" 
+      :disabled="isExamMode" 
       @click="visible = true"
     >
       自定义时间
     </el-button>
 
-    <el-dialog v-model="visible" title="开始时间" center align-center>
-      <div class="cust-dialog">
-        <div v-for="(field, key) in customTime" :key="key">
-          <el-input-number 
-            v-model="customTime[key].value" 
-            :min="0" 
-            :max="field.max"
-          />
-          {{ field.label }}
+    <el-dialog v-model="visible" title="考试时间设置" width="400px" center>
+      <div class="time-settings">
+        <div class="time-section">
+          <h4>开始时间</h4>
+          <div class="time-inputs">
+            <el-input-number 
+              v-model="customTime.startHour.value" 
+              :min="0" 
+              :max="23"
+              placeholder="时"
+            />
+            <span class="time-separator">:</span>
+            <el-input-number 
+              v-model="customTime.startMinute.value" 
+              :min="0" 
+              :max="59"
+              placeholder="分"
+            />
+          </div>
+        </div>
+
+        <div class="time-section">
+          <h4>持续时间</h4>
+          <div class="time-inputs">
+            <el-input-number 
+              v-model="customTime.durationMinute.value" 
+              :min="0" 
+              :max="999"
+              placeholder="分钟"
+            />
+            <span class="time-separator">:</span>
+            <el-input-number 
+              v-model="customTime.durationSecond.value" 
+              :min="0" 
+              :max="59"
+              placeholder="秒"
+            />
+          </div>
         </div>
       </div>
+
       <template #footer>
-        <el-button type="primary" @click="handleCustomTime">确定</el-button>
+        <div class="dialog-footer">
+          <el-button @click="visible = false">取消</el-button>
+          <el-button type="primary" @click="handleCustomTime">确定</el-button>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -49,24 +82,24 @@ import { ref, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
 
 const props = defineProps({
-  isCountdown: Boolean
+  isExamMode: Boolean
 });
 
 const emit = defineEmits(['setTime', 'reset']);
 
 const timePresets = [
-  { name: '事业单位（广东）', duration: 5405, hour: 9, minute: 29, second: 55 },
-  { name: '行测时间（广东）', duration: 5405, hour: 13, minute: 59, second: 55 },
-  { name: '申论时间（广东）', duration: 7205, hour: 16, minute: 14, second: 55 },
-  { name: '行测时间（国考）', duration: 7205, hour: 8, minute: 59, second: 55 },
+  { name: '事业单位（广东）', duration: 5400, hour: 9, minute: 30, second: 0 },
+  { name: '行测时间（广东）', duration: 5400, hour: 14, minute: 0, second: 0 },
+  { name: '申论时间（广东）', duration: 7200, hour: 16, minute: 15, second: 0 },
+  { name: '行测时间（国考）', duration: 7200, hour: 9, minute: 0, second: 0 },
 ];
 
 const visible = ref(false);
 const customTime = reactive({
-  hour: { value: 0, max: 24, label: '时' },
-  minute: { value: 0, max: 60, label: '分' },
-  second: { value: 0, max: 60, label: '秒' },
-  duration: { value: 0, max: Infinity, label: '秒' },
+  startHour: { value: 14, max: 23 },
+  startMinute: { value: 0, max: 59 },
+  durationMinute: { value: 90, max: 999 },
+  durationSecond: { value: 0, max: 59 },
 });
 
 const handleSetTime = (preset) => {
@@ -75,23 +108,40 @@ const handleSetTime = (preset) => {
 };
 
 const handleCustomTime = () => {
-  const hour = parseInt(customTime.hour.value) || 0;
-  const minutes = parseInt(customTime.minute.value) || 0;
-  const seconds = parseInt(customTime.second.value) || 0;
-  
-  // 确保至少有1秒钟
-  if (hour === 0 && minutes === 0 && seconds === 0) {
-    ElMessage.error('请至少设置1秒钟的时间');
+  const startHour = parseInt(customTime.startHour.value);
+  const startMinute = parseInt(customTime.startMinute.value);
+  const durationMinutes = parseInt(customTime.durationMinute.value) || 0;
+  const durationSeconds = parseInt(customTime.durationSecond.value) || 0;
+
+  // 验证输入
+  if (isNaN(startHour) || isNaN(startMinute) || startHour >= 24 || startMinute >= 60) {
+    ElMessage.error('请输入有效的开始时间');
     return;
   }
 
-  const duration = (hour * 3600) + (minutes * 60) + seconds;
-  emit('setTime', duration, hour, minutes, seconds);
+  if (durationMinutes === 0 && durationSeconds === 0) {
+    ElMessage.error('请输入有效的持续时间');
+    return;
+  }
+
+  // 计算总持续时间（秒）
+  const duration = (durationMinutes * 60) + durationSeconds;
+
+  const preset = {
+    duration: duration,
+    hour: startHour,
+    minute: startMinute,
+    second: 0
+  };
+
+  handleSetTime(preset);
   
-  // 清空输入
-  customTime.hour.value = '';
-  customTime.minute.value = '';
-  customTime.second.value = '';
+  visible.value = false;
+  
+  // 使用24小时制显示时间
+  const formattedHour = startHour.toString().padStart(2, '0');
+  const formattedMinute = startMinute.toString().padStart(2, '0');
+  ElMessage.success(`时钟将调至 ${formattedHour}:${formattedMinute} ，持续 ${durationMinutes}分${durationSeconds}秒`);
 };
 
 const handleReset = () => {
@@ -122,5 +172,45 @@ const handleReset = () => {
 
 :deep(.el-button) {
   margin: 0;
+}
+
+.time-settings {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.time-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.time-section h4 {
+  margin: 0;
+  color: #606266;
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-separator {
+  font-size: 20px;
+  color: #909399;
+  margin: 0 4px;
+}
+
+:deep(.el-input-number) {
+  width: 100px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
 }
 </style>

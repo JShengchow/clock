@@ -3,17 +3,17 @@
     <div class="clock-container">
       <!-- 左侧计时列表 -->
       <TimingList 
-        :is-countdown="isCoundown"
-        :current-time="clockTime"
+        ref="timingListRef"
+        :is-exam-mode="isExamMode"
+        :current-time="currentTime.date"
         class="timing-list-container"
       />
-
       <!-- 右侧时钟部分 -->
       <div class="clock-main">
         <div class="clock-set-wrapper">
           <div class="clock-set">
             <TimeControls 
-              :is-countdown="isCoundown"
+              :is-exam-mode="isExamMode"
               @set-time="handleSetTime"
               @reset="handleReset"
             />
@@ -27,18 +27,19 @@
         </div>
 
         <div class="clock-display">
+          <!-- 数字时钟 -->
           <div class="clock-countdown" v-show="!switchClock">
-            {{ countdown.displayTime() }}
+            {{ currentTime.display }}
           </div>
-
+          <!-- 指针时钟 -->
           <AnalogClock 
             v-show="switchClock"
-            :time="clockTime"
+            :time="currentTime.date"
           />
         </div>
 
         <div class="clock-current">
-          {{ currentClock.displayTime() }}
+          {{ getCurrentDisplayTime() }}
         </div>
       </div>
     </div>
@@ -46,51 +47,103 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { Clock } from './utils/Clock.js';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { formatTime, createExamTime, getRemainingTime, getCurrentDisplayTime, getExamDisplayTime } from './utils/timeUtils';
 import AnalogClock from './components/AnalogClock.vue';
 import TimeControls from './components/TimeControls.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import TimingList from './components/TimingList.vue';
 
 const switchClock = ref(true);
-const isCoundown = ref(false);
+const isExamMode = ref(false);
+const examTimes = ref(null);
+const currentTimeStamp = ref(Date.now());
 
-// 计算当前显示的时间
-const clockTime = computed(() => {
-  if (!isCoundown.value) {
-    return new Date(); // 非倒计时状态显示当前时间
-  }
-  return countdown.value.getCurrentDate(); // 倒计时状态显示设定时间
+// 创建定时器更新时间
+let timer = null;
+
+onMounted(() => {
+  // 每秒更新时间戳
+  timer = setInterval(() => {
+    currentTimeStamp.value = Date.now();
+  }, 1000);
 });
 
-// 当前时钟
-const currentClock = ref(new Clock(86400));
-currentClock.value.start();
-
-// 倒计时时钟
-const countdown = ref(new Clock(5400));
-
-const handleSetTime = (duration, hour, minutes, seconds) => {
-  ElMessage.warning('即将开始');
-  isCoundown.value = true;
-  countdown.value = new Clock(duration, hour, minutes, seconds);
-  countdown.value.start(() => {
-    ElMessageBox.alert('时间到啦！！！', '时间到', {
-      confirmButtonText: '做完啦！！！',
-      callback: () => {
-        handleReset();
-      }
-    });
-  });
-};
-
-const handleReset = () => {
-  if (countdown.value.timerID) {
-    countdown.value.reset();
+onUnmounted(() => {
+  // 清理定时器
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
   }
-  isCoundown.value = false;
+});
+
+// 统一的时间计算，依赖于 currentTimeStamp
+const currentTime = computed(() => {
+  if (!isExamMode.value || !examTimes.value) {
+    // 非考试模式，返回当前时间
+    const now = new Date(currentTimeStamp.value);
+    return {
+      date: now,
+      display: getCurrentDisplayTime(),
+      hours: now.getHours(),
+      minutes: now.getMinutes(),
+      seconds: now.getSeconds()
+    };
+  }
+  
+  // 考试模式
+  const remaining = getRemainingTime(examTimes.value, currentTimeStamp.value);
+  const examTime = getExamDisplayTime(examTimes.value);
+  return {
+    date: examTime,
+    display: remaining.isFinished ? '--:--:--' : 
+      `${formatTime(remaining.hours)} : ${formatTime(remaining.minutes)} : ${formatTime(remaining.seconds)}`,
+    hours: remaining.hours,
+    minutes: remaining.minutes,
+    seconds: remaining.seconds,
+    isFinished: remaining.isFinished
+  };
+});
+
+// 使用 watch 监听时间状态，处理考试结束
+watch(
+  () => currentTime.value?.isFinished,
+  async (isFinished) => {
+    if (isFinished && isExamMode.value) {
+      try {
+        // 先进行最后一次计次
+        if (timingListRef.value) {
+          timingListRef.value.handleLapTime();
+        }
+        
+        // 然后显示时间到的提示
+        await ElMessageBox.alert('时间到啦！！！', '时间到', {
+          confirmButtonText: '做完啦！！！'
+        });
+        handleReset();
+      } catch (error) {
+        console.error('Error handling exam finish:', error);
+      }
+    }
+  }
+);
+
+// 处理时间设置
+const handleSetTime = (duration, hour, minutes, seconds) => {
+  ElMessage.warning('3s后开始');
+  setTimeout(() => {
+    examTimes.value = createExamTime(duration, hour, minutes, seconds);
+    isExamMode.value = true;
+  }, 3000);
 };
+
+// 处理重置
+const handleReset = () => {
+  examTimes.value = null;
+  isExamMode.value = false;
+};
+
+const timingListRef = ref(null); // 添加对 TimingList 组件的引用
 </script>
 
 <style>
@@ -155,26 +208,29 @@ const handleReset = () => {
   position: fixed;
   right: 10px;
   bottom: 0;
+  opacity: 0.3;
 }
 
 .clock-countdown {
-  font-size: 200px;
+  font-size: 160px;
   font-weight: 500;
   text-align: center;
   border: 2px solid black;
   border-radius: 20px;
-  padding: 40px;
+  padding: 20px 40px;
   margin: 0;
   background: rgba(255, 255, 255, 0.8);
-  min-width: 800px;
+  min-width: 900px;
+  white-space: nowrap;
 }
 
 @media screen and (max-width: 767px) {
   .clock-countdown {
     text-align: left;
-    font-size: 120px;
-    padding: 20px;
+    font-size: 80px;
+    padding: 10px 20px;
     min-width: unset;
+    overflow-x: auto;
   }
   
   .clock-display {

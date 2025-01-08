@@ -2,10 +2,21 @@
   <div class="timing-list">
     <div class="timing-header">
       <div class="header-cell">
-        模块
-        <el-button type="primary" text plain @click="handleAddModule">
-          增加模块
-        </el-button>
+        <p>模块</p>
+        <div class="module-controls">
+          <el-button type="primary" text plain @click="handleAddModule">
+            +1 模块
+          </el-button>
+          <el-button
+            v-if="timingRecords.length > DEFAULT_ROWS"
+            type="danger"
+            text
+            plain
+            @click="handleDeleteLastModule"
+          >
+            -1 模块
+          </el-button>
+        </div>
       </div>
       <div class="header-cell">计次时间</div>
       <div class="header-cell">模块用时</div>
@@ -28,27 +39,18 @@
         <div class="cell">{{ record.accumulatedTime }}</div>
       </div>
     </div>
-
     <div class="timing-controls">
       <el-button
         type="primary"
         @click="handleLapTime"
-        :disabled="!isCountdown || currentIndex >= timingRecords.length"
+        :disabled="!isExamMode || currentIndex >= timingRecords.length"
       >
         计次
       </el-button>
-      <el-button
-        type="warning"
-        @click="handleReset"
-        :disabled="!hasRecords"
-      >
+      <el-button type="warning" @click="handleReset" :disabled="!hasRecords">
         重置
       </el-button>
-      <el-button 
-        type="success" 
-        @click="handleArchive" 
-        :disabled="!hasRecords"
-      >
+      <el-button type="success" @click="handleArchive" :disabled="!hasRecords">
         归档
       </el-button>
     </div>
@@ -57,10 +59,10 @@
       <div class="archive-header">
         <h3>归档记录</h3>
       </div>
-      
+
       <el-collapse v-model="activeArchives">
-        <el-collapse-item 
-          v-for="(archive, archiveIndex) in archives" 
+        <el-collapse-item
+          v-for="(archive, archiveIndex) in archives"
           :key="archive.timestamp"
           :name="archiveIndex"
         >
@@ -77,7 +79,11 @@
             </div>
           </template>
           <div class="archive-records">
-            <div class="archive-record" v-for="(record, index) in archive.records" :key="index">
+            <div
+              class="archive-record"
+              v-for="(record, index) in archive.records"
+              :key="index"
+            >
               <span class="record-module">{{ record.module }}</span>
               <span class="record-time">{{ record.lapTime }}</span>
               <span class="record-duration">{{ record.accumulatedTime }}</span>
@@ -92,10 +98,10 @@
 <script setup>
 import { ref, onMounted, watch, computed } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { Delete } from '@element-plus/icons-vue';
+import { Delete } from "@element-plus/icons-vue";
 
 const props = defineProps({
-  isCountdown: Boolean,
+  isExamMode: Boolean,
   currentTime: {
     type: Date,
     required: true,
@@ -162,16 +168,18 @@ const resetRecords = (keepModules = true) => {
 
 // 监听倒计时状态变化
 watch(
-  () => props.isCountdown,
+  () => props.isExamMode,
   (newValue) => {
     if (newValue) {
+      // 使用传入的当前时间作为考试开始时间
       examStartTime.value = props.currentTime;
       isFirstLap.value = true;
       resetRecords(true);
     } else {
       examStartTime.value = null;
     }
-  }
+  },
+  { immediate: true } // 立即执行一次
 );
 
 // 处理模块名称变化
@@ -200,8 +208,9 @@ const handleLapTime = () => {
     // 第一次计次
     const firstRecord = timingRecords.value[0];
     firstRecord.lapTime = timeString;
-    const diffFromStart =
-      (currentTime.getTime() - examStartTime.value.getTime()) / 1000;
+    const diffFromStart = Math.floor(
+      (currentTime.getTime() - examStartTime.value.getTime()) / 1000
+    );
     firstRecord.accumulatedTime = formatSeconds(diffFromStart);
     isFirstLap.value = false;
   } else {
@@ -214,7 +223,7 @@ const handleLapTime = () => {
       timingRecords.value[currentIndex.value - 1].lapTime
     );
     const currTime = parseTimeString(timeString);
-    const diffSeconds = (currTime - prevTime) / 1000;
+    const diffSeconds = Math.floor((currTime - prevTime) / 1000);
     currentRecord.accumulatedTime = formatSeconds(diffSeconds);
   }
 
@@ -250,7 +259,15 @@ const formatSeconds = (seconds) => {
 // 格式化归档时间显示
 const formatArchiveTime = (timestamp) => {
   const date = new Date(timestamp);
-  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")} ${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
+  return `${date.getFullYear()}-${(date.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")} ${date
+    .getHours()
+    .toString()
+    .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date
+    .getSeconds()
+    .toString()
+    .padStart(2, "0")}`;
 };
 
 // 修改归档功能
@@ -259,7 +276,7 @@ const handleArchive = () => {
   const archive = {
     timestamp,
     records: timingRecords.value
-      .filter(record => record.lapTime !== "--:--:--") // 只保存有计次的记录
+      .filter((record) => record.lapTime !== "--:--:--") // 只保存有计次的记录
       .map((record, index) => ({
         module: record.module || `模块${index + 1}`,
         lapTime: record.lapTime,
@@ -268,7 +285,9 @@ const handleArchive = () => {
   };
 
   // 更新本地存储
-  const currentArchives = JSON.parse(localStorage.getItem("timingArchives") || "[]");
+  const currentArchives = JSON.parse(
+    localStorage.getItem("timingArchives") || "[]"
+  );
   currentArchives.push(archive);
   localStorage.setItem("timingArchives", JSON.stringify(currentArchives));
 
@@ -282,41 +301,79 @@ const handleArchive = () => {
 
 // 重置按钮处理函数
 const handleReset = () => {
-  ElMessageBox.confirm(
-    '确定要重置当前记录吗？模块名称将会保留。',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }
-  ).then(() => {
-    resetRecords(true);
-    ElMessage.success('重置成功');
-  }).catch(() => {});
+  ElMessageBox.confirm("确定要重置当前记录吗？模块名称将会保留。", "提示", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      resetRecords(true);
+      ElMessage.success("重置成功");
+    })
+    .catch(() => {});
 };
 
 // 删除归档记录
 const handleDeleteArchive = (index) => {
-  ElMessageBox.confirm(
-    '确定要删除这条归档记录吗？此操作不可恢复。',
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }
-  ).then(() => {
-    // 从显示列表中移除
-    archives.value.splice(index, 1);
-    
-    // 更新本地存储
-    const currentArchives = archives.value.slice().reverse(); // 恢复原始顺序
-    localStorage.setItem('timingArchives', JSON.stringify(currentArchives));
-    
-    ElMessage.success('删除成功');
-  }).catch(() => {});
+  ElMessageBox.confirm("确定要删除这条归档记录吗？此操作不可恢复。", "警告", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(() => {
+      // 从显示列表中移除
+      archives.value.splice(index, 1);
+
+      // 更新本地存储
+      const currentArchives = archives.value.slice().reverse(); // 恢复原始顺序
+      localStorage.setItem("timingArchives", JSON.stringify(currentArchives));
+
+      ElMessage.success("删除成功");
+    })
+    .catch(() => {});
 };
+
+// 删除最后一个模块
+const handleDeleteLastModule = () => {
+  // 如果只剩下默认行数，不允许删除
+  if (timingRecords.value.length <= DEFAULT_ROWS) {
+    ElMessage.warning(`不能删除，至少需要保留 ${DEFAULT_ROWS} 个模块`);
+    return;
+  }
+
+  // 如果要删除的行已经有计次记录，需要确认
+  const lastRecord = timingRecords.value[timingRecords.value.length - 1];
+  if (lastRecord.lapTime !== "--:--:--") {
+    ElMessageBox.confirm("该模块已有计次记录，确定要删除吗？", "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    })
+      .then(() => {
+        timingRecords.value.pop();
+        handleModuleChange();
+        ElMessage.success("删除成功");
+      })
+      .catch(() => {});
+  } else {
+    // 如果没有计次记录，直接删除
+    timingRecords.value.pop();
+    handleModuleChange();
+  }
+};
+
+// 暴露给父组件的方法
+const exposed = {
+  handleLapTime: () => {
+    // 只有在考试模式且还有可用行时才执行计次
+    if (props.isExamMode && currentIndex.value < timingRecords.value.length) {
+      handleLapTime();
+    }
+  },
+};
+
+// 暴露方法给父组件
+defineExpose(exposed);
 </script>
 
 <style scoped>
@@ -347,7 +404,7 @@ const handleDeleteArchive = (index) => {
 }
 
 .header-cell:first-child {
-  justify-content: space-between;
+  /* justify-content: space-around; */
   padding: 0 8px;
 }
 
@@ -426,7 +483,8 @@ const handleDeleteArchive = (index) => {
   font-weight: 500;
 }
 
-.record-time, .record-duration {
+.record-time,
+.record-duration {
   color: #909399;
   font-family: monospace;
 }
@@ -441,5 +499,10 @@ const handleDeleteArchive = (index) => {
 
 :deep(.el-collapse-item__header) {
   padding-right: 0;
+}
+
+.module-controls {
+  display: flex;
+  flex-direction: column;
 }
 </style>

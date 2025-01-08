@@ -61,7 +61,6 @@ onMounted(() => {
   justify-content: center;
   width: 600px;
   height: 600px;
-  margin: 20px auto;
   font-size: 32px;
   border-radius: 30px;
   box-shadow: 2px 2px 20px rgba(0, 0, 0, .1);
