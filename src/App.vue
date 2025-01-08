@@ -1,5 +1,12 @@
 <template>
   <div id="app">
+    <!-- 全屏倒计时 -->
+    <Transition name="el-fade-in-linear">
+      <div v-if="showCountdown" class="fullscreen-countdown">
+        <div class="countdown-number">{{ countdownNumber }}</div>
+      </div>
+    </Transition>
+
     <div class="clock-container">
       <!-- 左侧计时列表 -->
       <TimingList 
@@ -51,7 +58,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { formatTime, createExamTime, getRemainingTime, getCurrentDisplayTime, getExamDisplayTime } from './utils/timeUtils';
 import AnalogClock from './components/AnalogClock.vue';
 import TimeControls from './components/TimeControls.vue';
-import { ElMessage, ElMessageBox } from 'element-plus';
+import { ElLoading, ElMessage, ElMessageBox } from 'element-plus';
 import TimingList from './components/TimingList.vue';
 
 const switchClock = ref(true);
@@ -128,13 +135,36 @@ watch(
   }
 );
 
+const showCountdown = ref(false);
+const countdownNumber = ref(3);
+
+// 倒计时函数
+const startCountdown = (callback) => {
+  showCountdown.value = true;
+  countdownNumber.value = 3;
+
+  const countdownInterval = setInterval(() => {
+    countdownNumber.value--;
+    if (countdownNumber.value <= 0) {
+      clearInterval(countdownInterval);
+      showCountdown.value = false;
+      callback?.();
+    }
+  }, 1000);
+
+  // 返回清理函数
+  return () => {
+    clearInterval(countdownInterval);
+    showCountdown.value = false;
+  };
+};
+
 // 处理时间设置
 const handleSetTime = (duration, hour, minutes, seconds) => {
-  ElMessage.warning('3s后开始');
-  setTimeout(() => {
+  startCountdown(() => {
     examTimes.value = createExamTime(duration, hour, minutes, seconds);
     isExamMode.value = true;
-  }, 3000);
+  });
 };
 
 // 处理重置
@@ -224,6 +254,27 @@ const timingListRef = ref(null); // 添加对 TimingList 组件的引用
   white-space: nowrap;
 }
 
+.fullscreen-countdown {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.countdown-number {
+  font-size: 200px;
+  color: white;
+  font-weight: bold;
+}
+
+
+/* 移动端适配 */
 @media screen and (max-width: 767px) {
   .clock-countdown {
     text-align: left;
@@ -245,5 +296,10 @@ const timingListRef = ref(null); // 添加对 TimingList 组件的引用
     padding: 10px;
     margin-bottom: 10px;
   }
+
+  .countdown-number {
+    font-size: 120px;
+  }
 }
+
 </style>

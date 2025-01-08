@@ -1,5 +1,16 @@
 <template>
-  <div class="timing-list">
+  <div
+    class="timing-list"
+    :class="{ 'timing-list-inactive': !isHovered && !isPinned }"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
+  >
+    <div
+      v-if="isHovered || isPinned"
+      class="pin-button"
+      :class="{ 'pin-active': isPinned }"
+      @click="isPinned = !isPinned"
+    ></div>
     <div class="timing-header">
       <div class="header-cell">
         <p>模块</p>
@@ -132,6 +143,9 @@ let examStartTime = ref(null);
 
 const archives = ref([]);
 const activeArchives = ref([]);
+
+const isHovered = ref(false);
+const isPinned = ref(false);
 
 // 从 localStorage 加载数据
 onMounted(() => {
@@ -378,12 +392,19 @@ defineExpose(exposed);
 
 <style scoped>
 .timing-list {
+  position: relative;
   width: 100%;
   border: 1px solid #eee;
   border-radius: 8px;
   padding: 16px;
   background: white;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.timing-list-inactive {
+  height: 62px;
+  overflow: hidden;
 }
 
 .timing-header {
@@ -504,5 +525,29 @@ defineExpose(exposed);
 .module-controls {
   display: flex;
   flex-direction: column;
+}
+
+.pin-button {
+  position: absolute;
+  bottom: 10px;
+  right: 50%;
+  transform: translateX(50%);
+  width: 50%;
+  height: 6px;
+  background: #eee;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.pin-button:hover {
+  opacity: .8;
+}
+
+.pin-active {
+  background: #b5cfe8;
+  height: 6px;
+  opacity: 1;
 }
 </style>
