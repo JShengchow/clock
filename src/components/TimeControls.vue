@@ -46,6 +46,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue';
+import { ElMessage } from 'element-plus';
 
 const props = defineProps({
   isCountdown: Boolean
@@ -74,13 +75,23 @@ const handleSetTime = (preset) => {
 };
 
 const handleCustomTime = () => {
-  emit('setTime', 
-    customTime.duration.value,
-    customTime.hour.value,
-    customTime.minute.value,
-    customTime.second.value
-  );
-  visible.value = false;
+  const hour = parseInt(customTime.hour.value) || 0;
+  const minutes = parseInt(customTime.minute.value) || 0;
+  const seconds = parseInt(customTime.second.value) || 0;
+  
+  // 确保至少有1秒钟
+  if (hour === 0 && minutes === 0 && seconds === 0) {
+    ElMessage.error('请至少设置1秒钟的时间');
+    return;
+  }
+
+  const duration = (hour * 3600) + (minutes * 60) + seconds;
+  emit('setTime', duration, hour, minutes, seconds);
+  
+  // 清空输入
+  customTime.hour.value = '';
+  customTime.minute.value = '';
+  customTime.second.value = '';
 };
 
 const handleReset = () => {

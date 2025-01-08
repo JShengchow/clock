@@ -47,7 +47,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Clock } from './utils/Clock';
+import { Clock } from './utils/Clock.js';
 import AnalogClock from './components/AnalogClock.vue';
 import TimeControls from './components/TimeControls.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
