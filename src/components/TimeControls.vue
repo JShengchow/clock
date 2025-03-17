@@ -141,9 +141,9 @@ const emit = defineEmits(["setTime", "reset"]);
 const defaultPresets = [
   {
     name: "事业单位（广东）",
-    duration: 5400,
-    hour: 9,
-    minute: 30,
+    duration: 5400,    // 1.5小时 = 90分钟 = 5400秒
+    hour: 15,         // 15点 = 下午3点
+    minute: 0,        // 整点开始
     second: 0,
     isCustom: false,
   },
