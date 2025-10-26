@@ -9,7 +9,7 @@
 
     <div class="clock-container">
       <!-- 左侧计时列表 -->
-      <TimingList 
+      <TimingList
         ref="timingListRef"
         :is-exam-mode="isExamMode"
         :current-time="currentTime.date"
@@ -19,30 +19,31 @@
       <div class="clock-main">
         <div class="clock-set-wrapper">
           <div class="clock-set">
-            <TimeControls 
+            <TimeControls
               :is-exam-mode="isExamMode"
               @set-time="handleSetTime"
               @reset="handleReset"
             />
           </div>
 
-          <el-switch 
-            v-model="switchClock" 
-            active-text="指针时钟" 
+          <el-switch
+            v-model="switchClock"
+            active-text="指针时钟"
             inactive-text="数字时钟"
           />
         </div>
 
-        <div class="clock-display">
+        <div
+          class="clock-display"
+          @click="handleFull"
+          :class="{ 'is-full': isFull }"
+        >
           <!-- 数字时钟 -->
           <div class="clock-countdown" v-show="!switchClock">
             {{ currentTime.display }}
           </div>
           <!-- 指针时钟 -->
-          <AnalogClock 
-            v-show="switchClock"
-            :time="currentTime.date"
-          />
+          <AnalogClock v-show="switchClock" :time="currentTime.date" />
         </div>
 
         <div class="clock-current">
@@ -54,12 +55,18 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { formatTime, createExamTime, getRemainingTime, getCurrentDisplayTime, getExamDisplayTime } from './utils/timeUtils';
-import AnalogClock from './components/AnalogClock.vue';
-import TimeControls from './components/TimeControls.vue';
-import { ElLoading, ElMessage, ElMessageBox } from 'element-plus';
-import TimingList from './components/TimingList.vue';
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import {
+  formatTime,
+  createExamTime,
+  getRemainingTime,
+  getCurrentDisplayTime,
+  getExamDisplayTime,
+} from "./utils/timeUtils";
+import AnalogClock from "./components/AnalogClock.vue";
+import TimeControls from "./components/TimeControls.vue";
+import { ElLoading, ElMessage, ElMessageBox } from "element-plus";
+import TimingList from "./components/TimingList.vue";
 
 const switchClock = ref(true);
 const isExamMode = ref(false);
@@ -94,21 +101,24 @@ const currentTime = computed(() => {
       display: getCurrentDisplayTime(),
       hours: now.getHours(),
       minutes: now.getMinutes(),
-      seconds: now.getSeconds()
+      seconds: now.getSeconds(),
     };
   }
-  
+
   // 考试模式
   const remaining = getRemainingTime(examTimes.value, currentTimeStamp.value);
   const examTime = getExamDisplayTime(examTimes.value);
   return {
     date: examTime,
-    display: remaining.isFinished ? '--:--:--' : 
-      `${formatTime(remaining.hours)} : ${formatTime(remaining.minutes)} : ${formatTime(remaining.seconds)}`,
+    display: remaining.isFinished
+      ? "--:--:--"
+      : `${formatTime(remaining.hours)} : ${formatTime(
+          remaining.minutes
+        )} : ${formatTime(remaining.seconds)}`,
     hours: remaining.hours,
     minutes: remaining.minutes,
     seconds: remaining.seconds,
-    isFinished: remaining.isFinished
+    isFinished: remaining.isFinished,
   };
 });
 
@@ -122,14 +132,14 @@ watch(
         if (timingListRef.value) {
           timingListRef.value.handleLapTime();
         }
-        
+
         // 然后显示时间到的提示
-        await ElMessageBox.alert('时间到啦！！！', '时间到', {
-          confirmButtonText: '做完啦！！！'
+        await ElMessageBox.alert("时间到啦！！！", "时间到", {
+          confirmButtonText: "做完啦！！！",
         });
         handleReset();
       } catch (error) {
-        console.error('Error handling exam finish:', error);
+        console.error("Error handling exam finish:", error);
       }
     }
   }
@@ -159,21 +169,38 @@ const startCountdown = (callback) => {
   };
 };
 
+// 添加音频提醒
+const alertAudio = new Audio("alert.mp3");
+
+let alertTimer = null;
 // 处理时间设置
 const handleSetTime = (duration, hour, minutes, seconds) => {
   startCountdown(() => {
     examTimes.value = createExamTime(duration, hour, minutes, seconds);
     isExamMode.value = true;
   });
+
+  const alertTime = (duration / 60 - 15) * 60 * 1000 + 3000;
+  alertTimer = setTimeout(() => {
+    ElMessage("15分钟倒计时");
+    alertAudio.play();
+  }, alertTime);
 };
 
 // 处理重置
 const handleReset = () => {
   examTimes.value = null;
   isExamMode.value = false;
+  clearTimeout(alertTimer);
+  alertTimer = null;
 };
 
 const timingListRef = ref(null); // 添加对 TimingList 组件的引用
+
+const isFull = ref(false);
+const handleFull = () => {
+  isFull.value = !isFull.value;
+};
 </script>
 
 <style>
@@ -273,7 +300,6 @@ const timingListRef = ref(null); // 添加对 TimingList 组件的引用
   font-weight: bold;
 }
 
-
 /* 移动端适配 */
 @media screen and (max-width: 767px) {
   .clock-countdown {
@@ -283,15 +309,15 @@ const timingListRef = ref(null); // 添加对 TimingList 组件的引用
     min-width: unset;
     overflow-x: auto;
   }
-  
+
   .clock-display {
     min-height: 400px;
   }
-  
+
   .clock-container {
     padding: 10px;
   }
-  
+
   .clock-set-wrapper {
     padding: 10px;
     margin-bottom: 10px;
@@ -299,6 +325,19 @@ const timingListRef = ref(null); // 添加对 TimingList 组件的引用
 
   .countdown-number {
     font-size: 120px;
+  }
+}
+.is-full {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 0;
+  background: #000;
+}
+@media screen and (max-width: 767px) {
+  .timing-list-container {
+    display: none;
   }
 }
 
